@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="cupcake">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>聊天室 - <%= roomId %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.21.2/index.js" type="module"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; height: 100vh; overflow: hidden; }
+    
+    #chat-messages {
+      scroll-behavior: smooth;
+    }
+    
+    .message-bubble {
+      max-width: 70%;
+      word-wrap: break-word;
+      word-break: break-word;
+      white-space: pre-wrap;
+      display: inline-block;
+      line-height: 1.3;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+    
+    .message-wrapper {
+      max-width: 100%;
+      margin-bottom: 0.15rem;
+    }
+    
+    .message-wrapper.message-self {
+      text-align: right;
+    }
+    .message-wrapper.message-other {
+      text-align: left;
+    }
+    
+    .message-self .message-bubble {
+      background-color: #c8e6c9;
+      color: #1b5e20;
+      border-radius: 18px 18px 4px 18px;
+    }
+    
+    .message-other .message-bubble {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border-radius: 18px 18px 18px 4px;
+    }
+    
+    .message-wrapper.message-system {
+      align-self: center;
+      text-align: center;
+    }
+    .message-system .message-bubble {
+      background: transparent;
+      color: var(--bc);
+      font-style: italic;
+      font-size: 0.8rem;
+      max-width: 100%;
+      width: auto;
+      opacity: 0.6;
+    }
+    
+    .message-private {
+      border: 2px solid var(--wa) !important;
+    }
+    
+    #typing-indicator {
+      font-size: 0.8rem;
+      color: var(--bc);
+      opacity: 0.6;
+      font-style: italic;
+      min-height: 1.2rem;
+    }
+    
+    .connection-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+    }
+    
+    .online-user {
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .online-user:hover {
+      background-color: var(--b2);
+    }
+    .online-user.self {
+      font-weight: 600;
+    }
+    
+    /* 昵称输入弹窗 */
+    #nickname-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+    #nickname-modal.hidden {
+      display: none;
+    }
+    
+    /* Emoji picker */
+    #emoji-picker-container {
+      position: absolute;
+      bottom: 60px;
+      left: 10px;
+      z-index: 100;
+      display: none;
+    }
+    #emoji-picker-container.show {
+      display: block;
+    }
+    
+    /* 搜索框 */
+    #search-box {
+      display: none;
+    }
+    #search-box.show {
+      display: block;
+    }
+    
+    /* 禁言弹窗 */
+    #mute-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+    #mute-modal.hidden {
+      display: none;
+    }
+    
+    /* 高亮搜索结果 */
+    .highlight {
+      background-color: var(--wa);
+      padding: 0 2px;
+      border-radius: 2px;
+      color: var(--wc);
+    }
+    
+    /* 滚动条样式 */
+    #chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+    #chat-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #chat-messages::-webkit-scrollbar-thumb {
+      background: var(--bc);
+      border-radius: 3px;
+      opacity: 0.3;
+    }
+    
+    /* 消息时间戳 */
+    .msg-time {
+      font-size: 0.65rem;
+      opacity: 0.45;
+      line-height: 1;
+    }
+    
+    /* 消息发送者名 */
+    .msg-sender {
+      font-size: 0.7rem;
+      opacity: 0.6;
+      line-height: 1.2;
+    }
+
+    /* 主题切换开关 */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .theme-toggle .toggle {
+      --tglbg: #b3b3b3;
+    }
+    .theme-toggle .toggle:checked {
+      --tglbg: #3b82f6;
+    }
+  </style>
+</head>
+<body class="bg-base-200">
+  <!-- 昵称输入弹窗 -->
+  <div id="nickname-modal">
+    <div class="card bg-base-100 shadow-2xl w-96 max-w-[90%]">
+      <div class="card-body p-8">
+        <h2 class="card-title text-2xl font-bold">💬 加入聊天室</h2>
+        <p class="text-sm opacity-60 mb-2">房间：<span class="badge badge-primary font-mono"><%= roomId %></span></p>
+        <input type="text" id="nickname-input" placeholder="输入你的昵称（1-16字符）" maxlength="16" class="input input-bordered input-primary w-full mb-2">
+        <p id="nickname-error" class="text-error text-sm mb-2 hidden"></p>
+        <button id="nickname-submit" class="btn btn-primary w-full">进入聊天室</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 禁言弹窗 -->
+  <div id="mute-modal" class="hidden">
+    <div class="card bg-base-100 shadow-2xl w-80 max-w-[90%]">
+      <div class="card-body p-6">
+        <h3 class="card-title text-lg">🔇 禁言用户</h3>
+        <p class="text-sm opacity-60 mb-3">选择禁言时长：</p>
+        <div class="flex gap-2 mb-4">
+          <button class="mute-option btn btn-outline btn-sm flex-1" data-duration="60">1分钟</button>
+          <button class="mute-option btn btn-outline btn-sm flex-1" data-duration="300">5分钟</button>
+          <button class="mute-option btn btn-outline btn-sm flex-1" data-duration="600">10分钟</button>
+        </div>
+        <button id="mute-cancel" class="btn btn-ghost w-full">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主界面 -->
+  <div class="h-screen flex flex-col">
+    <!-- 顶部栏 -->
+    <header class="bg-base-100 border-b border-base-300 px-4 py-3 flex items-center justify-between shadow-sm">
+      <div class="flex items-center gap-3">
+        <h1 class="text-lg font-bold">
+          💬 <span id="room-name"><%= roomId %></span>
+        </h1>
+        <span id="connection-status" class="connection-status text-success">🟢 已连接</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="theme-btn" class="cursor-pointer text-lg select-none" title="切换主题">🌙</span>
+        <span id="online-count" class="text-sm opacity-60">在线人数: 0</span>
+        <button id="search-toggle" class="btn btn-ghost btn-sm">🔍 搜索</button>
+        <button id="change-nickname" class="btn btn-ghost btn-sm">更换昵称</button>
+      </div>
+    </header>
+
+    <!-- 搜索框 -->
+    <div id="search-box" class="bg-base-100 border-b border-base-300 px-4 py-2">
+      <div class="flex gap-2 items-center">
+        <input type="text" id="search-input" placeholder="搜索消息..." class="input input-bordered input-sm flex-1">
+        <button id="search-prev" class="btn btn-ghost btn-sm px-2">▲</button>
+        <button id="search-next" class="btn btn-ghost btn-sm px-2">▼</button>
+        <span id="search-count" class="text-sm opacity-60">0/0</span>
+        <button id="search-close" class="btn btn-ghost btn-sm px-2">✕</button>
+      </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- 聊天区域 -->
+      <div class="flex-1 flex flex-col bg-base-200">
+        <div id="chat-messages" class="flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-0.5">
+          <!-- 消息会动态渲染到这里 -->
+        </div>
+        
+        <!-- 打字指示器 -->
+        <div id="typing-indicator" class="px-4 pb-1"></div>
+        
+        <!-- 输入区域 -->
+        <div class="bg-base-100 border-t border-base-300 px-4 py-3 relative">
+          <div id="emoji-picker-container">
+            <emoji-picker></emoji-picker>
+          </div>
+          <div class="flex gap-2 items-end">
+            <button id="emoji-btn" class="btn btn-ghost btn-circle text-xl" title="表情">😊</button>
+            <textarea id="message-input" rows="1" placeholder="输入消息... (@用户名 或 /w 用户名 发私聊)" class="textarea textarea-bordered flex-1 resize-none text-sm leading-5" style="max-height: 120px; min-height: 42px;"></textarea>
+            <button id="send-btn" class="btn btn-primary">发送</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧在线用户列表 -->
+      <div class="w-64 bg-base-100 border-l border-base-300 flex flex-col">
+        <div class="px-4 py-3 border-b border-base-200">
+          <h3 class="text-sm font-semibold opacity-60 uppercase tracking-wide">在线用户</h3>
+        </div>
+        <div id="online-users" class="flex-1 overflow-y-auto p-3 space-y-1">
+          <!-- 用户列表动态渲染 -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    const roomId = '<%= roomId %>';
+    let currentNickname = null;
+    let isAdmin = false;
+    let typingTimeout = null;
+    let muteTarget = null;
+    let searchResults = [];
+    let searchIndex = -1;
+
+    // DOM 元素
+    const nicknameModal = document.getElementById('nickname-modal');
+    const nicknameInput = document.getElementById('nickname-input');
+    const nicknameError = document.getElementById('nickname-error');
+    const nicknameSubmit = document.getElementById('nickname-submit');
+    const chatMessages = document.getElementById('chat-messages');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const onlineUsersDiv = document.getElementById('online-users');
+    const onlineCount = document.getElementById('online-count');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const connectionStatus = document.getElementById('connection-status');
+    const changeNicknameBtn = document.getElementById('change-nickname');
+    const emojiBtn = document.getElementById('emoji-btn');
+    const emojiPickerContainer = document.getElementById('emoji-picker-container');
+    const searchToggle = document.getElementById('search-toggle');
+    const searchBox = document.getElementById('search-box');
+    const searchInput = document.getElementById('search-input');
+    const searchPrev = document.getElementById('search-prev');
+    const searchNext = document.getElementById('search-next');
+    const searchCount = document.getElementById('search-count');
+    const searchClose = document.getElementById('search-close');
+    const muteModal = document.getElementById('mute-modal');
+    const muteCancel = document.getElementById('mute-cancel');
+    const themeBtn = document.getElementById('theme-btn');
+
+    // ===== 主题切换 =====
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      themeBtn.textContent = theme === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('chatroom_theme', theme);
+    }
+
+    // 初始化主题（默认 dark）
+    const savedTheme = localStorage.getItem('chatroom_theme') || 'dark';
+    applyTheme(savedTheme);
+
+    themeBtn.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'cupcake' : 'dark';
+      applyTheme(newTheme);
+    });
+
+    // ===== 连接状态 =====
+    socket.on('connect', () => {
+      connectionStatus.innerHTML = '🟢 已连接';
+      connectionStatus.className = 'connection-status text-success';
+      tryAutoLogin();
+    });
+
+    socket.on('disconnect', () => {
+      connectionStatus.innerHTML = '🔴 断开连接';
+      connectionStatus.className = 'connection-status text-error';
+    });
+
+    socket.io.on('reconnect_attempt', () => {
+      connectionStatus.innerHTML = '🟡 重连中...';
+      connectionStatus.className = 'connection-status text-warning';
+    });
+
+    socket.io.on('reconnect', () => {
+      connectionStatus.innerHTML = '🟢 已连接';
+      connectionStatus.className = 'connection-status text-success';
+      tryAutoLogin();
+    });
+
+    // ===== 自动登录 =====
+    function tryAutoLogin() {
+      const savedNickname = localStorage.getItem('nickname_' + roomId);
+      if (savedNickname) {
+        currentNickname = savedNickname;
+        socket.emit('join', { roomId, nickname: savedNickname });
+      } else {
+        showNicknameModal();
+      }
+    }
+
+    // ===== 昵称弹窗 =====
+    function showNicknameModal() {
+      nicknameModal.classList.remove('hidden');
+      nicknameInput.value = '';
+      nicknameError.classList.add('hidden');
+      setTimeout(() => nicknameInput.focus(), 100);
+    }
+
+    function hideNicknameModal() {
+      nicknameModal.classList.add('hidden');
+    }
+
+    nicknameSubmit.addEventListener('click', submitNickname);
+    nicknameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitNickname();
+    });
+
+    function submitNickname() {
+      const nickname = nicknameInput.value.trim();
+      if (!nickname || nickname.length < 1 || nickname.length > 16) {
+        nicknameError.textContent = '昵称长度需为 1-16 个字符';
+        nicknameError.classList.remove('hidden');
+        return;
+      }
+      currentNickname = nickname;
+      socket.emit('join', { roomId, nickname });
+    }
+
+    socket.on('join-error', (data) => {
+      nicknameError.textContent = data.message;
+      nicknameError.classList.remove('hidden');
+      currentNickname = null;
+    });
+
+    socket.on('join-success', (data) => {
+      hideNicknameModal();
+      localStorage.setItem('nickname_' + roomId, data.nickname);
+      currentNickname = data.nickname;
+      addSystemMessage('你已加入房间 ' + roomId);
+    });
+
+    // ===== 更换昵称 =====
+    changeNicknameBtn.addEventListener('click', () => {
+      // 先离开当前房间
+      if (currentNickname) {
+        socket.emit('leave-room', { roomId, nickname: currentNickname });
+      }
+      localStorage.removeItem('nickname_' + roomId);
+      currentNickname = null;
+      isAdmin = false;
+      // 清空消息列表
+      chatMessages.innerHTML = '';
+      showNicknameModal();
+    });
+
+    // ===== 消息渲染 =====
+    function addMessage(msg) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'message-wrapper';
+
+      const time = new Date(msg.timestamp).toLocaleTimeString('zh-CN', { hour12: false });
+
+      if (msg.type === 'system') {
+        wrapper.className += ' message-system';
+        wrapper.innerHTML = `<div class="message-bubble px-3 py-1">${msg.content}</div>`;
+      } else if (msg.type === 'private') {
+        const isSelf = msg.isSelf || msg.from === currentNickname;
+        wrapper.className += isSelf ? ' message-self' : ' message-other';
+        const prefix = isSelf ? `私聊给 ${msg.to}` : `私聊 from ${msg.from}`;
+        wrapper.innerHTML = `
+          <div class="msg-sender ${isSelf ? 'text-right' : ''}">${prefix}</div>
+          <div class="message-bubble px-3 py-2 message-private">
+            <div class="msg-time mb-1">${msg.from} ${time}</div>
+            <div>${escapeHtml(msg.content)}</div>
+          </div>
+        `;
+      } else {
+        const isSelf = msg.from === currentNickname;
+        wrapper.className += isSelf ? ' message-self' : ' message-other';
+        if (isSelf) {
+          wrapper.innerHTML = `
+            <div class="message-bubble px-3 py-2">${escapeHtml(msg.content)}</div>
+            <div class="msg-time text-right">${time}</div>
+          `;
+        } else {
+          wrapper.innerHTML = `
+            <div class="msg-sender">${msg.from}</div>
+            <div class="message-bubble px-3 py-2">${escapeHtml(msg.content)}</div>
+            <div class="msg-time">${time}</div>
+          `;
+        }
+      }
+
+      chatMessages.appendChild(wrapper);
+      scrollToBottom();
+    }
+
+    function addSystemMessage(content) {
+      addMessage({
+        id: Date.now().toString(),
+        type: 'system',
+        from: '系统',
+        to: null,
+        content,
+        timestamp: Date.now(),
+        roomId
+      });
+    }
+
+    // ===== 标题闪烁 =====
+    let titleBlinkInterval = null;
+    let originalTitle = document.title;
+    let isBlinking = false;
+
+    function startTitleBlink() {
+      if (isBlinking) return;
+      isBlinking = true;
+      let showNew = false;
+      titleBlinkInterval = setInterval(() => {
+        showNew = !showNew;
+        document.title = showNew ? '📩 New message' : originalTitle;
+      }, 600);
+    }
+
+    function stopTitleBlink() {
+      if (titleBlinkInterval) {
+        clearInterval(titleBlinkInterval);
+        titleBlinkInterval = null;
+      }
+      isBlinking = false;
+      document.title = originalTitle;
+    }
+
+    // 页面获得焦点时停止闪烁
+    window.addEventListener('focus', stopTitleBlink);
+
+    socket.on('message', (msg) => {
+      addMessage(msg);
+
+      // 如果不是自己发的消息，开始标题闪烁
+      if (msg.type !== 'system' && msg.from !== currentNickname) {
+        startTitleBlink();
+      }
+
+      // @消息通知
+      if (msg.type === 'private' && msg.to === currentNickname) {
+        if (Notification.permission === 'granted') {
+          new Notification('来自 ' + msg.from + ' 的私聊', { body: msg.content });
+        }
+      }
+      if (msg.content && msg.content.includes('@' + currentNickname)) {
+        if (Notification.permission === 'granted') {
+          new Notification(msg.from + ' 提到了你', { body: msg.content });
+        }
+      }
+    });
+
+    // ===== 在线用户列表 =====
+    socket.on('online-users', (users) => {
+      onlineUsersDiv.innerHTML = '';
+      onlineCount.textContent = '在线人数: ' + users.length;
+
+      users.forEach(nickname => {
+        const div = document.createElement('div');
+        const isSelf = nickname === currentNickname;
+        div.className = 'online-user flex items-center justify-between group' + (isSelf ? ' self' : '');
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'text-sm';
+        nameSpan.textContent = isSelf ? nickname + ' (自己)' : nickname;
+        
+        div.appendChild(nameSpan);
+
+        // 管理员标识
+        if (isAdmin && !isSelf) {
+          const muteBtn = document.createElement('span');
+          muteBtn.className = 'text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-error';
+          muteBtn.textContent = '🔇';
+          muteBtn.title = '禁言该用户';
+          muteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            muteTarget = nickname;
+            muteModal.classList.remove('hidden');
+          });
+          div.appendChild(muteBtn);
+        }
+
+        // 点击用户 @ 私聊
+        if (!isSelf) {
+          div.addEventListener('click', () => {
+            messageInput.value = '@' + nickname + ' ';
+            messageInput.focus();
+          });
+        }
+
+        onlineUsersDiv.appendChild(div);
+      });
+
+      // 检查是否是管理员（第一个用户）
+      if (users.length > 0 && users[0] === currentNickname) {
+        isAdmin = true;
+      }
+    });
+
+    socket.on('user-join', (data) => {
+      addSystemMessage(data.nickname + ' 加入了房间');
+    });
+
+    socket.on('user-leave', (data) => {
+      addSystemMessage(data.nickname + ' 离开了房间');
+    });
+
+    // ===== 发送消息 =====
+    function sendMessage() {
+      const content = messageInput.value.trim();
+      if (!content) return;
+
+      // 检查私聊命令 /w 用户名 消息
+      const wMatch = content.match(/^\/w\s+(\S+)\s+(.+)/);
+      if (wMatch) {
+        socket.emit('private-message', { to: wMatch[1], content: wMatch[2] });
+        messageInput.value = '';
+        return;
+      }
+
+      // 检查 @用户名 私聊
+      const atMatch = content.match(/^@(\S+)\s+(.+)/);
+      if (atMatch) {
+        socket.emit('private-message', { to: atMatch[1], content: atMatch[2] });
+        messageInput.value = '';
+        return;
+      }
+
+      // 普通消息
+      socket.emit('chat-message', { content });
+      messageInput.value = '';
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // ===== 打字指示器 =====
+    messageInput.addEventListener('input', () => {
+      clearTimeout(typingTimeout);
+      socket.emit('typing', { isTyping: true });
+      typingTimeout = setTimeout(() => {
+        socket.emit('typing', { isTyping: false });
+      }, 1000);
+    });
+
+    socket.on('typing-status', (data) => {
+      if (data.isTyping) {
+        typingIndicator.textContent = data.nickname + ' 正在输入...';
+      } else {
+        typingIndicator.textContent = '';
+      }
+    });
+
+    // ===== 自动滚动 =====
+    let autoScroll = true;
+
+    chatMessages.addEventListener('scroll', () => {
+      const threshold = 100;
+      autoScroll = (chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight) < threshold;
+    });
+
+    function scrollToBottom() {
+      if (autoScroll) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+    }
+
+    // ===== Emoji 选择器 =====
+    emojiBtn.addEventListener('click', () => {
+      emojiPickerContainer.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!emojiBtn.contains(e.target) && !emojiPickerContainer.contains(e.target)) {
+        emojiPickerContainer.classList.remove('show');
+      }
+    });
+
+    document.querySelector('emoji-picker')?.addEventListener('emoji-click', (event) => {
+      const emoji = event.detail.unicode;
+      messageInput.value += emoji;
+      messageInput.focus();
+      emojiPickerContainer.classList.remove('show');
+    });
+
+    // ===== 消息搜索 =====
+    searchToggle.addEventListener('click', () => {
+      searchBox.classList.toggle('show');
+      if (searchBox.classList.contains('show')) {
+        searchInput.focus();
+      }
+    });
+
+    searchClose.addEventListener('click', () => {
+      searchBox.classList.remove('show');
+      clearHighlights();
+    });
+
+    function clearHighlights() {
+      document.querySelectorAll('.highlight').forEach(el => {
+        const parent = el.parentNode;
+        parent.replaceChild(document.createTextNode(el.textContent), el);
+        parent.normalize();
+      });
+      searchResults = [];
+      searchIndex = -1;
+      searchCount.textContent = '0/0';
+    }
+
+    function performSearch() {
+      const query = searchInput.value.trim().toLowerCase();
+      clearHighlights();
+      if (!query) return;
+
+      const messages = chatMessages.querySelectorAll('.message-bubble');
+      messages.forEach(msg => {
+        const text = msg.textContent.toLowerCase();
+        if (text.includes(query)) {
+          const originalHTML = msg.innerHTML;
+          const regex = new RegExp('(' + escapeRegExp(searchInput.value.trim()) + ')', 'gi');
+          msg.innerHTML = originalHTML.replace(regex, '<span class="highlight">$1</span>');
+          searchResults.push(msg);
+        }
+      });
+
+      searchIndex = searchResults.length > 0 ? 0 : -1;
+      searchCount.textContent = searchResults.length > 0 ? `1/${searchResults.length}` : '0/0';
+      if (searchResults.length > 0) {
+        searchResults[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function escapeRegExp(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    searchInput.addEventListener('input', performSearch);
+
+    searchPrev.addEventListener('click', () => {
+      if (searchResults.length === 0) return;
+      searchIndex = (searchIndex - 1 + searchResults.length) % searchResults.length;
+      searchCount.textContent = `${searchIndex + 1}/${searchResults.length}`;
+      searchResults[searchIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    searchNext.addEventListener('click', () => {
+      if (searchResults.length === 0) return;
+      searchIndex = (searchIndex + 1) % searchResults.length;
+      searchCount.textContent = `${searchIndex + 1}/${searchResults.length}`;
+      searchResults[searchIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // ===== 禁言功能 =====
+    document.querySelectorAll('.mute-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const duration = parseInt(btn.dataset.duration);
+        if (muteTarget) {
+          socket.emit('mute-user', { targetNickname: muteTarget, duration });
+          muteModal.classList.add('hidden');
+          muteTarget = null;
+        }
+      });
+    });
+
+    muteCancel.addEventListener('click', () => {
+      muteModal.classList.add('hidden');
+      muteTarget = null;
+    });
+
+    // ===== 请求通知权限 =====
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // ===== 工具函数 =====
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ===== 自动调整输入框高度 =====
+    messageInput.addEventListener('input', () => {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+    });
+  </script>
+</body>
+</html>
