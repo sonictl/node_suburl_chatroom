@@ -640,45 +640,54 @@
     }
 
     // 请求通知权限（必须由用户点击触发）
-    function requestNotificationPermission() {
+    function requestNotificationPermission(callback) {
       if (!('Notification' in window)) {
         addSystemMessage('浏览器不支持通知');
-        return false;
+        if (callback) callback(false);
+        return;
       }
       if (Notification.permission === 'denied') {
         addSystemMessage('通知权限被拒绝');
-        return false;
+        if (callback) callback(false);
+        return;
       }
       if (Notification.permission === 'granted') {
-        return true;
+        if (callback) callback(true);
+        return;
       }
-      // 请求权限
+      // 请求权限（异步）
       Notification.requestPermission().then(perm => {
         if (perm === 'granted') {
-          notificationEnabled = true;
-          localStorage.setItem('chatroom_notif_' + roomId, 'true');
-          updateNotifButton();
-          addSystemMessage('通知已开启');
+          if (callback) callback(true);
+        } else {
+          if (callback) callback(false);
         }
       });
-      return false;
+    }
+
+    function enableNotifications() {
+      notificationEnabled = true;
+      localStorage.setItem('chatroom_notif_' + roomId, 'true');
+      updateNotifButton();
+      addSystemMessage('通知已开启');
+    }
+
+    function disableNotifications() {
+      notificationEnabled = false;
+      localStorage.setItem('chatroom_notif_' + roomId, 'false');
+      updateNotifButton();
+      addSystemMessage('通知已关闭');
     }
 
     notifBtn.addEventListener('click', () => {
       if (!notificationEnabled) {
-        const granted = requestNotificationPermission();
-        if (granted) {
-          notificationEnabled = true;
-          localStorage.setItem('chatroom_notif_' + roomId, 'true');
-          updateNotifButton();
-          addSystemMessage('通知已开启');
-        }
+        requestNotificationPermission((granted) => {
+          if (granted) {
+            enableNotifications();
+          }
+        });
       } else {
-        // 关闭通知
-        notificationEnabled = false;
-        localStorage.setItem('chatroom_notif_' + roomId, 'false');
-        updateNotifButton();
-        addSystemMessage('通知已关闭');
+        disableNotifications();
       }
     });
 
