@@ -22,10 +22,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 const rooms = new Map();
 
 
-// Route - notification test page
-app.get('/testnote', (req, res) => {
-  res.render('test');
-});
+// // Route - notification test page
+// app.get('/testnote', (req, res) => {
+//   res.render('test');
+// });
 
 // Route - match /:roomId
 app.get('/:roomId', (req, res) => {
