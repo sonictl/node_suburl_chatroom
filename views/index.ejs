@@ -476,6 +476,7 @@
       <div class="flex items-center gap-2">
         <span id="theme-btn" class="cursor-pointer text-lg select-none" title="切换主题">🌙</span>
         <span id="online-count" class="text-sm opacity-60">在线: 0</span>
+        <button id="notif-btn" class="btn btn-ghost btn-sm" title="桌面通知">🔕</button>
         <button id="search-toggle" class="btn btn-ghost btn-sm">🔍 <span>搜索</span></button>
         <button id="change-nickname" class="btn btn-ghost btn-sm"><span>更换昵称</span></button>
         <div id="mobile-menu-btn">
@@ -609,6 +610,72 @@
       const newTheme = currentTheme === 'dark' ? 'cupcake' : 'dark';
       applyTheme(newTheme);
     });
+
+    // ===== 桌面通知开关 =====
+    let notificationEnabled = false;
+    const notifBtn = document.getElementById('notif-btn');
+
+    // 从 localStorage 恢复通知状态
+    const savedNotif = localStorage.getItem('chatroom_notif_' + roomId);
+    if (savedNotif === 'true') {
+      notificationEnabled = true;
+      notifBtn.textContent = '🔔';
+      notifBtn.title = '桌面通知（已开启）';
+    }
+
+    function updateNotifButton() {
+      if (notificationEnabled) {
+        notifBtn.textContent = '🔔';
+        notifBtn.title = '桌面通知（已开启）';
+      } else {
+        notifBtn.textContent = '🔕';
+        notifBtn.title = '桌面通知（已关闭）';
+      }
+    }
+
+    notifBtn.addEventListener('click', () => {
+      if (!notificationEnabled) {
+        // 尝试开启通知
+        if (!('Notification' in window)) {
+          addSystemMessage('您的浏览器不支持桌面通知');
+          return;
+        }
+        if (Notification.permission === 'denied') {
+          addSystemMessage('通知权限已被拒绝，请在浏览器设置中开启');
+          return;
+        }
+        if (Notification.permission === 'granted') {
+          notificationEnabled = true;
+          localStorage.setItem('chatroom_notif_' + roomId, 'true');
+          updateNotifButton();
+          addSystemMessage('桌面通知已开启');
+          return;
+        }
+        // permission === 'default'，请求权限
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            notificationEnabled = true;
+            localStorage.setItem('chatroom_notif_' + roomId, 'true');
+            updateNotifButton();
+            addSystemMessage('桌面通知已开启');
+          } else {
+            addSystemMessage('通知权限被拒绝');
+          }
+        });
+      } else {
+        // 关闭通知
+        notificationEnabled = false;
+        localStorage.setItem('chatroom_notif_' + roomId, 'false');
+        updateNotifButton();
+        addSystemMessage('桌面通知已关闭');
+      }
+    });
+
+    function sendNotification(title, body) {
+      if (notificationEnabled && Notification.permission === 'granted') {
+        new Notification(title, { body });
+      }
+    }
 
     // ===== 连接状态 =====
     socket.on('connect', () => {
@@ -796,16 +863,12 @@
         startTitleBlink();
       }
 
-      // @消息通知
+      // 桌面通知（受开关控制）
       if (msg.type === 'private' && msg.to === currentNickname) {
-        if (Notification.permission === 'granted') {
-          new Notification('来自 ' + msg.from + ' 的私聊', { body: msg.content });
-        }
+        sendNotification('来自 ' + msg.from + ' 的私聊', msg.content);
       }
       if (msg.content && msg.content.includes('@' + currentNickname)) {
-        if (Notification.permission === 'granted') {
-          new Notification(msg.from + ' 提到了你', { body: msg.content });
-        }
+        sendNotification(msg.from + ' 提到了你', msg.content);
       }
     });
 
@@ -1033,11 +1096,6 @@
       muteModal.classList.add('hidden');
       muteTarget = null;
     });
-
-    // ===== 请求通知权限 =====
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
 
     // ===== 工具函数 =====
     function escapeHtml(text) {
