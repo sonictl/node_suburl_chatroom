@@ -4,5 +4,5 @@ node_modules/
 .env
 *.log
 README-CN.md
-req_instruct.md
+req_instructions.md
 
