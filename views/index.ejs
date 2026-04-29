@@ -613,6 +613,7 @@
 
     // ===== 桌面通知开关 =====
     let notificationEnabled = false;
+    let isPageVisible = true;
     const notifBtn = document.getElementById('notif-btn');
 
     // 从 localStorage 恢复通知状态
@@ -622,6 +623,11 @@
       notifBtn.textContent = '🔔';
       notifBtn.title = '桌面通知（已开启）';
     }
+
+    // 监听页面可见性
+    document.addEventListener('visibilitychange', () => {
+      isPageVisible = !document.hidden;
+    });
 
     function updateNotifButton() {
       if (notificationEnabled) {
@@ -633,47 +639,60 @@
       }
     }
 
-    notifBtn.addEventListener('click', () => {
-      if (!notificationEnabled) {
-        // 尝试开启通知
-        if (!('Notification' in window)) {
-          addSystemMessage('您的浏览器不支持桌面通知');
-          return;
-        }
-        if (Notification.permission === 'denied') {
-          addSystemMessage('通知权限已被拒绝，请在浏览器设置中开启');
-          return;
-        }
-        if (Notification.permission === 'granted') {
+    // 请求通知权限（必须由用户点击触发）
+    function requestNotificationPermission() {
+      if (!('Notification' in window)) {
+        addSystemMessage('浏览器不支持通知');
+        return false;
+      }
+      if (Notification.permission === 'denied') {
+        addSystemMessage('通知权限被拒绝');
+        return false;
+      }
+      if (Notification.permission === 'granted') {
+        return true;
+      }
+      // 请求权限
+      Notification.requestPermission().then(perm => {
+        if (perm === 'granted') {
           notificationEnabled = true;
           localStorage.setItem('chatroom_notif_' + roomId, 'true');
           updateNotifButton();
-          addSystemMessage('桌面通知已开启');
-          return;
+          addSystemMessage('通知已开启');
         }
-        // permission === 'default'，请求权限
-        Notification.requestPermission().then(permission => {
-          if (permission === 'granted') {
-            notificationEnabled = true;
-            localStorage.setItem('chatroom_notif_' + roomId, 'true');
-            updateNotifButton();
-            addSystemMessage('桌面通知已开启');
-          } else {
-            addSystemMessage('通知权限被拒绝');
-          }
-        });
+      });
+      return false;
+    }
+
+    notifBtn.addEventListener('click', () => {
+      if (!notificationEnabled) {
+        const granted = requestNotificationPermission();
+        if (granted) {
+          notificationEnabled = true;
+          localStorage.setItem('chatroom_notif_' + roomId, 'true');
+          updateNotifButton();
+          addSystemMessage('通知已开启');
+        }
       } else {
         // 关闭通知
         notificationEnabled = false;
         localStorage.setItem('chatroom_notif_' + roomId, 'false');
         updateNotifButton();
-        addSystemMessage('桌面通知已关闭');
+        addSystemMessage('通知已关闭');
       }
     });
 
+    // 发送通知（仅当页面在后台）
     function sendNotification(title, body) {
-      if (notificationEnabled && Notification.permission === 'granted') {
-        new Notification(title, { body });
+      if (notificationEnabled && Notification.permission === 'granted' && !isPageVisible) {
+        try {
+          const notif = new Notification(title, { body });
+          notif.onclick = () => {
+            window.focus();  // 点击通知后聚焦页面
+          };
+        } catch (e) {
+          console.error('通知发送失败', e);
+        }
       }
     }
 
