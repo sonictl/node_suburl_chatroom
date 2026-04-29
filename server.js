@@ -88,7 +88,7 @@ io.on('connection', (socket) => {
 
     // Notify other users in the room
     socket.to(roomId).emit('message', {
-      id: uuidv4(),
+      id: uuidv4(), 
       type: 'system',
       from: '系统',
       to: null,
