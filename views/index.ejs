@@ -2,57 +2,65 @@
 <html lang="zh-CN" data-theme="cupcake">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>聊天室 - <%= roomId %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.21.2/index.js" type="module"></script>
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html {
-      height: 100%;
-      height: -webkit-fill-available;
-      overflow: hidden;
-    }
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      height: 100vh;
-      height: 100dvh;
+      height: 100vh; 
       overflow: hidden;
-      position: fixed;
-      width: 100%;
-      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
     }
+    
     #chat-messages {
       scroll-behavior: smooth;
-      -webkit-overflow-scrolling: touch;
     }
+    
     .message-bubble {
-      max-width: 85%;
+      max-width: 70%;
       word-wrap: break-word;
       word-break: break-word;
-      overflow-wrap: break-word;
       white-space: pre-wrap;
       display: inline-block;
       line-height: 1.3;
       text-align: left;
       font-size: 0.9rem;
     }
+    
     .message-wrapper {
       max-width: 100%;
       margin-bottom: 0.15rem;
     }
-    .message-wrapper.message-self { text-align: right; }
-    .message-wrapper.message-other { text-align: left; }
+    
+    .message-wrapper.message-self {
+      text-align: right;
+    }
+    .message-wrapper.message-other {
+      text-align: left;
+    }
+    
     .message-self .message-bubble {
       background-color: #c8e6c9;
       color: #1b5e20;
       border-radius: 18px 18px 4px 18px;
     }
+    
     .message-other .message-bubble {
       background-color: #e8f5e9;
       color: #2e7d32;
       border-radius: 18px 18px 18px 4px;
     }
-    .message-wrapper.message-system { align-self: center; text-align: center; }
+    
+    .message-wrapper.message-system {
+      align-self: center;
+      text-align: center;
+    }
     .message-system .message-bubble {
       background: transparent;
       color: var(--bc);
@@ -62,7 +70,11 @@
       width: auto;
       opacity: 0.6;
     }
-    .message-private { border: 2px solid var(--wa) !important; }
+    
+    .message-private {
+      border: 2px solid var(--wa) !important;
+    }
+    
     #typing-indicator {
       font-size: 0.8rem;
       color: var(--bc);
@@ -70,74 +82,28 @@
       font-style: italic;
       min-height: 1.2rem;
     }
+    
     .connection-status {
       display: inline-flex;
       align-items: center;
       gap: 4px;
       font-size: 0.75rem;
-      white-space: nowrap;
     }
-    .online-users-drawer {
-      position: fixed;
-      top: 0;
-      right: -280px;
-      width: 260px;
-      max-width: 80vw;
-      height: 100%;
-      height: 100dvh;
-      background: var(--b1);
-      z-index: 1100;
-      transition: right 0.3s ease;
-      box-shadow: -2px 0 8px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-    }
-    .online-users-drawer.open { right: 0; }
-    .drawer-overlay {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.4);
-      z-index: 1050;
-      display: none;
-    }
-    .drawer-overlay.open { display: block; }
+    
     .online-user {
       cursor: pointer;
-      padding: 8px 12px;
+      padding: 6px 10px;
       border-radius: 8px;
       transition: all 0.2s;
     }
-    .online-user:hover { background-color: var(--b2); }
-    .online-user.self { font-weight: 600; }
-    .mobile-menu-btn { display: none; }
-    @media (max-width: 768px) {
-      .mobile-menu-btn { display: flex; }
-      .desktop-user-list { display: none !important; }
-      .message-bubble { max-width: 92%; font-size: 0.85rem; }
-      .main-container { width: 100vw; max-width: 100vw; overflow-x: hidden; }
-      header { padding-left: 8px !important; padding-right: 8px !important; }
-      header h1 { font-size: 0.875rem !important; max-width: 100px !important; }
-      .input-area { padding: 6px 8px !important; }
-      .input-area .flex { gap: 4px !important; }
-      .input-area #emoji-btn { width: 32px; height: 32px; min-height: 32px; padding: 0; font-size: 1.1rem; }
-      .input-area #send-btn { padding: 0 10px; min-height: 32px; height: 32px; font-size: 0.8rem; }
-      .input-area #message-input { font-size: 0.85rem; min-height: 32px !important; padding: 6px 10px; }
-      #search-box .flex { flex-wrap: nowrap; gap: 4px !important; }
-      #search-box #search-input { min-width: 0; flex: 1; }
-      #search-box #search-count { font-size: 0.7rem; white-space: nowrap; }
-      #emoji-picker-container { left: 0; right: 0; bottom: 60px; display: none; }
-      #emoji-picker-container.show { display: flex; justify-content: center; }
-      #emoji-picker-container emoji-picker { width: 100%; max-width: 100vw; --num-columns: 8; --emoji-size: 1.2rem; max-height: 250px; }
+    .online-user:hover {
+      background-color: var(--b2);
     }
-    @media (min-width: 769px) {
-      .mobile-menu-btn, .drawer-overlay, .online-users-drawer { display: none !important; }
+    .online-user.self {
+      font-weight: 600;
     }
-    @media (max-width: 400px) {
-      header h1 { max-width: 80px !important; font-size: 0.8rem !important; }
-      #connection-status { display: none !important; }
-      .input-area #emoji-btn { display: none !important; }
-    }
+    
+    /* 昵称输入弹窗 */
     #nickname-modal {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -148,17 +114,31 @@
       z-index: 1000;
       backdrop-filter: blur(4px);
     }
-    #nickname-modal.hidden { display: none; }
+    #nickname-modal.hidden {
+      display: none;
+    }
+    
+    /* Emoji picker */
     #emoji-picker-container {
       position: absolute;
-      bottom: 70px;
+      bottom: 60px;
       left: 10px;
       z-index: 100;
       display: none;
     }
-    #emoji-picker-container.show { display: block; }
-    #search-box { display: none; }
-    #search-box.show { display: block; }
+    #emoji-picker-container.show {
+      display: block;
+    }
+    
+    /* 搜索框 */
+    #search-box {
+      display: none;
+    }
+    #search-box.show {
+      display: block;
+    }
+    
+    /* 禁言弹窗 */
     #mute-modal {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -169,19 +149,263 @@
       z-index: 1000;
       backdrop-filter: blur(4px);
     }
-    #mute-modal.hidden { display: none; }
-    .highlight { background-color: var(--wa); padding: 0 2px; border-radius: 2px; color: var(--wc); }
-    #chat-messages::-webkit-scrollbar { width: 4px; }
-    #chat-messages::-webkit-scrollbar-track { background: transparent; }
-    #chat-messages::-webkit-scrollbar-thumb { background: var(--bc); border-radius: 2px; opacity: 0.3; }
-    .msg-time { font-size: 0.65rem; opacity: 0.45; line-height: 1; }
-    .msg-sender { font-size: 0.7rem; opacity: 0.6; line-height: 1.2; }
-    @supports (padding-bottom: env(safe-area-inset-bottom)) {
-      .input-area { padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important; }
+    #mute-modal.hidden {
+      display: none;
+    }
+    
+    /* 高亮搜索结果 */
+    .highlight {
+      background-color: var(--wa);
+      padding: 0 2px;
+      border-radius: 2px;
+      color: var(--wc);
+    }
+    
+    /* 滚动条样式 */
+    #chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+    #chat-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #chat-messages::-webkit-scrollbar-thumb {
+      background: var(--bc);
+      border-radius: 3px;
+      opacity: 0.3;
+    }
+    
+    /* 消息时间戳 */
+    .msg-time {
+      font-size: 0.65rem;
+      opacity: 0.45;
+      line-height: 1;
+    }
+    
+    /* 消息发送者名 */
+    .msg-sender {
+      font-size: 0.7rem;
+      opacity: 0.6;
+      line-height: 1.2;
+    }
+
+    /* 主题切换开关 */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .theme-toggle .toggle {
+      --tglbg: #b3b3b3;
+    }
+    .theme-toggle .toggle:checked {
+      --tglbg: #3b82f6;
+    }
+
+    /* ===== 移动端适配样式 ===== */
+    
+    /* 抽屉式用户列表 */
+    #users-drawer {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 80%;
+      max-width: 300px;
+      height: 100vh;
+      background: var(--b1);
+      box-shadow: -4px 0 12px rgba(0,0,0,0.3);
+      transition: right 0.3s ease;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    #users-drawer.open {
+      right: 0;
+    }
+    
+    #drawer-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 998;
+      display: none;
+      backdrop-filter: blur(2px);
+    }
+    
+    #drawer-overlay.show {
+      display: block;
+    }
+    
+    /* 移动端汉堡菜单按钮 */
+    #mobile-menu-btn {
+      display: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    
+    #mobile-menu-btn:active {
+      background: var(--b2);
+    }
+    
+    /* 移动端媒体查询 */
+    @media (max-width: 768px) {
+      /* 显示移动端菜单按钮 */
+      #mobile-menu-btn {
+        display: block;
+      }
+      
+      /* 隐藏桌面端用户列表 */
+      #desktop-users-panel {
+        display: none !important;
+      }
+      
+      /* 调整顶部栏 */
+      header {
+        padding: 0.5rem 0.75rem !important;
+        flex-wrap: wrap;
+      }
+      
+      header h1 {
+        font-size: 1rem !important;
+      }
+      
+      header .flex.items-center.gap-2 {
+        gap: 0.25rem !important;
+      }
+      
+      /* 隐藏部分按钮文字，只显示图标 */
+      #search-toggle, #change-nickname {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+      }
+      
+      #online-count {
+        font-size: 0.75rem !important;
+      }
+      
+      .connection-status {
+        font-size: 0.7rem !important;
+      }
+      
+      /* 调整消息气泡 */
+      .message-bubble {
+        max-width: 85%;
+        font-size: 0.875rem;
+      }
+      
+      /* 调整输入区域 */
+      .bg-base-100.border-t {
+        padding: 0.5rem !important;
+      }
+      
+      #message-input {
+        font-size: 0.875rem !important;
+        min-height: 38px !important;
+      }
+      
+      #send-btn {
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.875rem !important;
+      }
+      
+      #emoji-btn {
+        width: 2.5rem !important;
+        height: 2.5rem !important;
+        min-height: 2.5rem !important;
+        font-size: 1.25rem !important;
+      }
+      
+      /* 调整 emoji 选择器位置 */
+      #emoji-picker-container {
+        bottom: 50px;
+        left: 5px;
+        right: 5px;
+        max-width: calc(100vw - 10px);
+      }
+      
+      #emoji-picker-container emoji-picker {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      
+      /* 调整搜索框 */
+      #search-box {
+        padding: 0.5rem !important;
+      }
+      
+      #search-input {
+        font-size: 0.875rem !important;
+      }
+      
+      #search-prev, #search-next, #search-close {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+      }
+      
+      /* 调整聊天消息区域内边距 */
+      #chat-messages {
+        padding: 0.5rem !important;
+      }
+      
+      /* 调整打字指示器 */
+      #typing-indicator {
+        padding: 0 0.5rem 0.25rem !important;
+        font-size: 0.75rem !important;
+      }
+      
+      /* 抽屉内用户列表样式 */
+      #users-drawer .px-4 {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+      }
+      
+      #users-drawer #online-users {
+        padding: 0.75rem !important;
+      }
+      
+      /* 调整弹窗 */
+      #nickname-modal .card,
+      #mute-modal .card {
+        max-width: 90% !important;
+        margin: 1rem;
+      }
+      
+      #nickname-modal .card-body,
+      #mute-modal .card-body {
+        padding: 1.5rem !important;
+      }
+    }
+    
+    /* 超小屏幕优化 */
+    @media (max-width: 375px) {
+      header h1 {
+        font-size: 0.875rem !important;
+      }
+      
+      #search-toggle span,
+      #change-nickname span {
+        display: none;
+      }
+      
+      .message-bubble {
+        font-size: 0.8125rem;
+      }
+      
+      #message-input {
+        font-size: 0.8125rem !important;
+      }
     }
   </style>
 </head>
 <body class="bg-base-200">
+  <!-- 昵称输入弹窗 -->
   <div id="nickname-modal">
     <div class="card bg-base-100 shadow-2xl w-96 max-w-[90%]">
       <div class="card-body p-8">
@@ -193,6 +417,8 @@
       </div>
     </div>
   </div>
+
+  <!-- 禁言弹窗 -->
   <div id="mute-modal" class="hidden">
     <div class="card bg-base-100 shadow-2xl w-80 max-w-[90%]">
       <div class="card-body p-6">
@@ -207,21 +433,48 @@
       </div>
     </div>
   </div>
-  <div class="h-screen flex flex-col relative main-container">
-    <header class="bg-base-100 border-b border-base-300 px-3 py-2 flex items-center justify-between shadow-sm">
-      <div class="flex items-center gap-2">
-        <h1 class="text-base font-bold truncate max-w-[150px]">💬 <span id="room-name"><%= roomId %></span></h1>
-        <span id="connection-status" class="connection-status text-success text-xs">🟢 已连接</span>
+
+  <!-- 移动端抽屉遮罩 -->
+  <div id="drawer-overlay"></div>
+
+  <!-- 移动端用户列表抽屉 -->
+  <div id="users-drawer">
+    <div class="px-4 py-3 border-b border-base-200 flex items-center justify-between">
+      <h3 class="text-sm font-semibold opacity-60 uppercase tracking-wide">在线用户</h3>
+      <button id="close-drawer" class="btn btn-ghost btn-sm btn-circle">✕</button>
+    </div>
+    <div id="drawer-users-list" class="flex-1 overflow-y-auto p-3 space-y-1">
+      <!-- 用户列表动态渲染 -->
+    </div>
+  </div>
+
+  <!-- 主界面 -->
+  <div class="h-screen flex flex-col">
+    <!-- 顶部栏 -->
+    <header class="bg-base-100 border-b border-base-300 px-4 py-3 flex items-center justify-between shadow-sm">
+      <div class="flex items-center gap-3">
+        <h1 class="text-lg font-bold">
+          💬 <span id="room-name"><%= roomId %></span>
+        </h1>
+        <span id="connection-status" class="connection-status text-success">🟢 已连接</span>
       </div>
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-2">
         <span id="theme-btn" class="cursor-pointer text-lg select-none" title="切换主题">🌙</span>
-        <span id="online-count" class="text-xs opacity-60">0人</span>
-        <button id="search-toggle" class="btn btn-ghost btn-xs">🔍</button>
-        <button id="change-nickname" class="btn btn-ghost btn-xs">昵称</button>
-        <button id="mobile-user-btn" class="btn btn-ghost btn-xs mobile-menu-btn">👥</button>
+        <span id="online-count" class="text-sm opacity-60">在线: 0</span>
+        <button id="search-toggle" class="btn btn-ghost btn-sm">🔍 <span>搜索</span></button>
+        <button id="change-nickname" class="btn btn-ghost btn-sm"><span>更换昵称</span></button>
+        <div id="mobile-menu-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </div>
       </div>
     </header>
-    <div id="search-box" class="bg-base-100 border-b border-base-300 px-3 py-2">
+
+    <!-- 搜索框 -->
+    <div id="search-box" class="bg-base-100 border-b border-base-300 px-4 py-2">
       <div class="flex gap-2 items-center">
         <input type="text" id="search-input" placeholder="搜索消息..." class="input input-bordered input-sm flex-1">
         <button id="search-prev" class="btn btn-ghost btn-sm px-2">▲</button>
@@ -230,43 +483,559 @@
         <button id="search-close" class="btn btn-ghost btn-sm px-2">✕</button>
       </div>
     </div>
-    <div class="flex-1 flex overflow-hidden relative">
-      <div class="flex-1 flex flex-col bg-base-200 min-w-0">
-        <div id="chat-messages" class="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-0.5"></div>
-        <div id="typing-indicator" class="px-3 pb-1 text-xs"></div>
-        <div class="bg-base-100 border-t border-base-300 px-3 py-2 relative input-area">
+
+    <!-- 主内容区 -->
+    <div class="flex flex-1 overflow-hidden">
+      <!-- 聊天区域 -->
+      <div class="flex-1 flex flex-col bg-base-200">
+        <div id="chat-messages" class="flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-0.5">
+          <!-- 消息会动态渲染到这里 -->
+        </div>
+        
+        <!-- 打字指示器 -->
+        <div id="typing-indicator" class="px-4 pb-1"></div>
+        
+        <!-- 输入区域 -->
+        <div class="bg-base-100 border-t border-base-300 px-4 py-3 relative">
           <div id="emoji-picker-container">
             <emoji-picker></emoji-picker>
           </div>
           <div class="flex gap-2 items-end">
-            <button id="emoji-btn" class="btn btn-ghost btn-circle text-xl">😊</button>
-            <textarea id="message-input" rows="1" placeholder="输入消息... (@或/w 私聊)" class="textarea textarea-bordered flex-1 resize-none text-sm leading-5" style="max-height: 100px; min-height: 38px;"></textarea>
-            <button id="send-btn" class="btn btn-primary btn-sm">发送</button>
+            <button id="emoji-btn" class="btn btn-ghost btn-circle text-xl" title="表情">😊</button>
+            <textarea id="message-input" rows="1" placeholder="输入消息... (@用户名 或 /w 用户名 发私聊)" class="textarea textarea-bordered flex-1 resize-none text-sm leading-5" style="max-height: 120px; min-height: 42px;"></textarea>
+            <button id="send-btn" class="btn btn-primary">发送</button>
           </div>
         </div>
       </div>
-      <div class="w-64 bg-base-100 border-l border-base-300 flex flex-col desktop-user-list">
+
+      <!-- 右侧在线用户列表（桌面端） -->
+      <div id="desktop-users-panel" class="w-64 bg-base-100 border-l border-base-300 flex flex-col">
         <div class="px-4 py-3 border-b border-base-200">
-          <h3 class="text-sm font-semibold opacity-60 uppercase">在线用户</h3>
+          <h3 class="text-sm font-semibold opacity-60 uppercase tracking-wide">在线用户</h3>
         </div>
-        <div id="online-users-desktop" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+        <div id="online-users" class="flex-1 overflow-y-auto p-3 space-y-1">
+          <!-- 用户列表动态渲染 -->
+        </div>
       </div>
     </div>
   </div>
-  <div id="drawer-overlay" class="drawer-overlay"></div>
-  <div id="mobile-drawer" class="online-users-drawer">
-    <div class="p-3 border-b border-base-200 flex justify-between items-center">
-      <h3 class="font-semibold">在线用户</h3>
-      <button id="close-drawer" class="btn btn-ghost btn-sm">✕</button>
-    </div>
-    <div id="online-users-mobile" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
-  </div>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.21.2/index.js" type="module"></script>
+
   <script>
-    var ROOM_ID = '<%= roomId %>';
+    const socket = io();
+    const roomId = '<%= roomId %>';
+    let currentNickname = null;
+    let isAdmin = false;
+    let typingTimeout = null;
+    let muteTarget = null;
+    let searchResults = [];
+    let searchIndex = -1;
+
+    // DOM 元素
+    const nicknameModal = document.getElementById('nickname-modal');
+    const nicknameInput = document.getElementById('nickname-input');
+    const nicknameError = document.getElementById('nickname-error');
+    const nicknameSubmit = document.getElementById('nickname-submit');
+    const chatMessages = document.getElementById('chat-messages');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const onlineUsersDiv = document.getElementById('online-users');
+    const drawerUsersList = document.getElementById('drawer-users-list');
+    const onlineCount = document.getElementById('online-count');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const connectionStatus = document.getElementById('connection-status');
+    const changeNicknameBtn = document.getElementById('change-nickname');
+    const emojiBtn = document.getElementById('emoji-btn');
+    const emojiPickerContainer = document.getElementById('emoji-picker-container');
+    const searchToggle = document.getElementById('search-toggle');
+    const searchBox = document.getElementById('search-box');
+    const searchInput = document.getElementById('search-input');
+    const searchPrev = document.getElementById('search-prev');
+    const searchNext = document.getElementById('search-next');
+    const searchCount = document.getElementById('search-count');
+    const searchClose = document.getElementById('search-close');
+    const muteModal = document.getElementById('mute-modal');
+    const muteCancel = document.getElementById('mute-cancel');
+    const themeBtn = document.getElementById('theme-btn');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const usersDrawer = document.getElementById('users-drawer');
+    const drawerOverlay = document.getElementById('drawer-overlay');
+    const closeDrawer = document.getElementById('close-drawer');
+
+    // ===== 移动端抽屉控制 =====
+    function openDrawer() {
+      usersDrawer.classList.add('open');
+      drawerOverlay.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawerFunc() {
+      usersDrawer.classList.remove('open');
+      drawerOverlay.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
+    mobileMenuBtn.addEventListener('click', openDrawer);
+    closeDrawer.addEventListener('click', closeDrawerFunc);
+    drawerOverlay.addEventListener('click', closeDrawerFunc);
+
+    // ===== 主题切换 =====
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      themeBtn.textContent = theme === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('chatroom_theme', theme);
+    }
+
+    // 初始化主题（默认 dark）
+    const savedTheme = localStorage.getItem('chatroom_theme') || 'dark';
+    applyTheme(savedTheme);
+
+    themeBtn.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'cupcake' : 'dark';
+      applyTheme(newTheme);
+    });
+
+    // ===== 连接状态 =====
+    socket.on('connect', () => {
+      connectionStatus.innerHTML = '🟢 已连接';
+      connectionStatus.className = 'connection-status text-success';
+      tryAutoLogin();
+    });
+
+    socket.on('disconnect', () => {
+      connectionStatus.innerHTML = '🔴 断开连接';
+      connectionStatus.className = 'connection-status text-error';
+    });
+
+    socket.io.on('reconnect_attempt', () => {
+      connectionStatus.innerHTML = '🟡 重连中...';
+      connectionStatus.className = 'connection-status text-warning';
+    });
+
+    socket.io.on('reconnect', () => {
+      connectionStatus.innerHTML = '🟢 已连接';
+      connectionStatus.className = 'connection-status text-success';
+      tryAutoLogin();
+    });
+
+    // ===== 自动登录 =====
+    function tryAutoLogin() {
+      const savedNickname = localStorage.getItem('nickname_' + roomId);
+      if (savedNickname) {
+        currentNickname = savedNickname;
+        socket.emit('join', { roomId, nickname: savedNickname });
+      } else {
+        showNicknameModal();
+      }
+    }
+
+    // ===== 昵称弹窗 =====
+    function showNicknameModal() {
+      nicknameModal.classList.remove('hidden');
+      nicknameInput.value = '';
+      nicknameError.classList.add('hidden');
+      setTimeout(() => nicknameInput.focus(), 100);
+    }
+
+    function hideNicknameModal() {
+      nicknameModal.classList.add('hidden');
+    }
+
+    nicknameSubmit.addEventListener('click', submitNickname);
+    nicknameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitNickname();
+    });
+
+    function submitNickname() {
+      const nickname = nicknameInput.value.trim();
+      if (!nickname || nickname.length < 1 || nickname.length > 16) {
+        nicknameError.textContent = '昵称长度需为 1-16 个字符';
+        nicknameError.classList.remove('hidden');
+        return;
+      }
+      currentNickname = nickname;
+      socket.emit('join', { roomId, nickname });
+    }
+
+    socket.on('join-error', (data) => {
+      nicknameError.textContent = data.message;
+      nicknameError.classList.remove('hidden');
+      currentNickname = null;
+    });
+
+    socket.on('join-success', (data) => {
+      hideNicknameModal();
+      localStorage.setItem('nickname_' + roomId, data.nickname);
+      currentNickname = data.nickname;
+      addSystemMessage('你已加入房间 ' + roomId);
+    });
+
+    // ===== 更换昵称 =====
+    changeNicknameBtn.addEventListener('click', () => {
+      // 先离开当前房间
+      if (currentNickname) {
+        socket.emit('leave-room', { roomId, nickname: currentNickname });
+      }
+      localStorage.removeItem('nickname_' + roomId);
+      currentNickname = null;
+      isAdmin = false;
+      // 清空消息列表
+      chatMessages.innerHTML = '';
+      showNicknameModal();
+    });
+
+    // ===== 消息渲染 =====
+    function addMessage(msg) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'message-wrapper';
+
+      const time = new Date(msg.timestamp).toLocaleTimeString('zh-CN', { hour12: false });
+
+      if (msg.type === 'system') {
+        wrapper.className += ' message-system';
+        wrapper.innerHTML = `<div class="message-bubble px-3 py-1">${msg.content}</div>`;
+      } else if (msg.type === 'private') {
+        const isSelf = msg.isSelf || msg.from === currentNickname;
+        wrapper.className += isSelf ? ' message-self' : ' message-other';
+        const prefix = isSelf ? `私聊给 ${msg.to}` : `私聊 from ${msg.from}`;
+        wrapper.innerHTML = `
+          <div class="msg-sender ${isSelf ? 'text-right' : ''}">${prefix}</div>
+          <div class="message-bubble px-3 py-2 message-private">
+            <div class="msg-time mb-1">${msg.from} ${time}</div>
+            <div>${escapeHtml(msg.content)}</div>
+          </div>
+        `;
+      } else {
+        const isSelf = msg.from === currentNickname;
+        wrapper.className += isSelf ? ' message-self' : ' message-other';
+        if (isSelf) {
+          wrapper.innerHTML = `
+            <div class="message-bubble px-3 py-2">${escapeHtml(msg.content)}</div>
+            <div class="msg-time text-right">${time}</div>
+          `;
+        } else {
+          wrapper.innerHTML = `
+            <div class="msg-sender">${msg.from}</div>
+            <div class="message-bubble px-3 py-2">${escapeHtml(msg.content)}</div>
+            <div class="msg-time">${time}</div>
+          `;
+        }
+      }
+
+      chatMessages.appendChild(wrapper);
+      scrollToBottom();
+    }
+
+    function addSystemMessage(content) {
+      addMessage({
+        id: Date.now().toString(),
+        type: 'system',
+        from: '系统',
+        to: null,
+        content,
+        timestamp: Date.now(),
+        roomId
+      });
+    }
+
+    // ===== 标题闪烁 =====
+    let titleBlinkInterval = null;
+    let originalTitle = document.title;
+    let isBlinking = false;
+
+    function startTitleBlink() {
+      if (isBlinking) return;
+      isBlinking = true;
+      let showNew = false;
+      titleBlinkInterval = setInterval(() => {
+        showNew = !showNew;
+        document.title = showNew ? '📩 New message' : originalTitle;
+      }, 600);
+    }
+
+    function stopTitleBlink() {
+      if (titleBlinkInterval) {
+        clearInterval(titleBlinkInterval);
+        titleBlinkInterval = null;
+      }
+      isBlinking = false;
+      document.title = originalTitle;
+    }
+
+    // 页面获得焦点时停止闪烁
+    window.addEventListener('focus', stopTitleBlink);
+
+    socket.on('message', (msg) => {
+      addMessage(msg);
+
+      // 如果不是自己发的消息，开始标题闪烁
+      if (msg.type !== 'system' && msg.from !== currentNickname) {
+        startTitleBlink();
+      }
+
+      // @消息通知
+      if (msg.type === 'private' && msg.to === currentNickname) {
+        if (Notification.permission === 'granted') {
+          new Notification('来自 ' + msg.from + ' 的私聊', { body: msg.content });
+        }
+      }
+      if (msg.content && msg.content.includes('@' + currentNickname)) {
+        if (Notification.permission === 'granted') {
+          new Notification(msg.from + ' 提到了你', { body: msg.content });
+        }
+      }
+    });
+
+    // ===== 在线用户列表 =====
+    function renderUserList(users, container) {
+      container.innerHTML = '';
+
+      users.forEach(nickname => {
+        const div = document.createElement('div');
+        const isSelf = nickname === currentNickname;
+        div.className = 'online-user flex items-center justify-between group' + (isSelf ? ' self' : '');
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'text-sm';
+        nameSpan.textContent = isSelf ? nickname + ' (自己)' : nickname;
+        
+        div.appendChild(nameSpan);
+
+        // 管理员标识
+        if (isAdmin && !isSelf) {
+          const muteBtn = document.createElement('span');
+          muteBtn.className = 'text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-error';
+          muteBtn.textContent = '🔇';
+          muteBtn.title = '禁言该用户';
+          muteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            muteTarget = nickname;
+            muteModal.classList.remove('hidden');
+          });
+          div.appendChild(muteBtn);
+        }
+
+        // 点击用户 @ 私聊
+        if (!isSelf) {
+          div.addEventListener('click', () => {
+            messageInput.value = '@' + nickname + ' ';
+            messageInput.focus();
+            // 移动端点击后关闭抽屉
+            if (window.innerWidth <= 768) {
+              closeDrawerFunc();
+            }
+          });
+        }
+
+        container.appendChild(div);
+      });
+
+      // 检查是否是管理员（第一个用户）
+      if (users.length > 0 && users[0] === currentNickname) {
+        isAdmin = true;
+      }
+    }
+
+    socket.on('online-users', (users) => {
+      onlineCount.textContent = '在线: ' + users.length;
+      
+      // 同时更新桌面端和移动端用户列表
+      renderUserList(users, onlineUsersDiv);
+      renderUserList(users, drawerUsersList);
+    });
+
+    socket.on('user-join', (data) => {
+      addSystemMessage(data.nickname + ' 加入了房间');
+    });
+
+    socket.on('user-leave', (data) => {
+      addSystemMessage(data.nickname + ' 离开了房间');
+    });
+
+    // ===== 发送消息 =====
+    function sendMessage() {
+      const content = messageInput.value.trim();
+      if (!content) return;
+
+      // 检查私聊命令 /w 用户名 消息
+      const wMatch = content.match(/^\/w\s+(\S+)\s+(.+)/);
+      if (wMatch) {
+        socket.emit('private-message', { to: wMatch[1], content: wMatch[2] });
+        messageInput.value = '';
+        return;
+      }
+
+      // 检查 @用户名 私聊
+      const atMatch = content.match(/^@(\S+)\s+(.+)/);
+      if (atMatch) {
+        socket.emit('private-message', { to: atMatch[1], content: atMatch[2] });
+        messageInput.value = '';
+        return;
+      }
+
+      // 普通消息
+      socket.emit('chat-message', { content });
+      messageInput.value = '';
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // ===== 打字指示器 =====
+    messageInput.addEventListener('input', () => {
+      clearTimeout(typingTimeout);
+      socket.emit('typing', { isTyping: true });
+      typingTimeout = setTimeout(() => {
+        socket.emit('typing', { isTyping: false });
+      }, 1000);
+    });
+
+    socket.on('typing-status', (data) => {
+      if (data.isTyping) {
+        typingIndicator.textContent = data.nickname + ' 正在输入...';
+      } else {
+        typingIndicator.textContent = '';
+      }
+    });
+
+    // ===== 自动滚动 =====
+    let autoScroll = true;
+
+    chatMessages.addEventListener('scroll', () => {
+      const threshold = 100;
+      autoScroll = (chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight) < threshold;
+    });
+
+    function scrollToBottom() {
+      if (autoScroll) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+    }
+
+    // ===== Emoji 选择器 =====
+    emojiBtn.addEventListener('click', () => {
+      emojiPickerContainer.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!emojiBtn.contains(e.target) && !emojiPickerContainer.contains(e.target)) {
+        emojiPickerContainer.classList.remove('show');
+      }
+    });
+
+    document.querySelector('emoji-picker')?.addEventListener('emoji-click', (event) => {
+      const emoji = event.detail.unicode;
+      messageInput.value += emoji;
+      messageInput.focus();
+      emojiPickerContainer.classList.remove('show');
+    });
+
+    // ===== 消息搜索 =====
+    searchToggle.addEventListener('click', () => {
+      searchBox.classList.toggle('show');
+      if (searchBox.classList.contains('show')) {
+        searchInput.focus();
+      }
+    });
+
+    searchClose.addEventListener('click', () => {
+      searchBox.classList.remove('show');
+      clearHighlights();
+    });
+
+    function clearHighlights() {
+      document.querySelectorAll('.highlight').forEach(el => {
+        const parent = el.parentNode;
+        parent.replaceChild(document.createTextNode(el.textContent), el);
+        parent.normalize();
+      });
+      searchResults = [];
+      searchIndex = -1;
+      searchCount.textContent = '0/0';
+    }
+
+    function performSearch() {
+      const query = searchInput.value.trim().toLowerCase();
+      clearHighlights();
+      if (!query) return;
+
+      const messages = chatMessages.querySelectorAll('.message-bubble');
+      messages.forEach(msg => {
+        const text = msg.textContent.toLowerCase();
+        if (text.includes(query)) {
+          const originalHTML = msg.innerHTML;
+          const regex = new RegExp('(' + escapeRegExp(searchInput.value.trim()) + ')', 'gi');
+          msg.innerHTML = originalHTML.replace(regex, '<span class="highlight">$1</span>');
+          searchResults.push(msg);
+        }
+      });
+
+      searchIndex = searchResults.length > 0 ? 0 : -1;
+      searchCount.textContent = searchResults.length > 0 ? `1/${searchResults.length}` : '0/0';
+      if (searchResults.length > 0) {
+        searchResults[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function escapeRegExp(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    searchInput.addEventListener('input', performSearch);
+
+    searchPrev.addEventListener('click', () => {
+      if (searchResults.length === 0) return;
+      searchIndex = (searchIndex - 1 + searchResults.length) % searchResults.length;
+      searchCount.textContent = `${searchIndex + 1}/${searchResults.length}`;
+      searchResults[searchIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    searchNext.addEventListener('click', () => {
+      if (searchResults.length === 0) return;
+      searchIndex = (searchIndex + 1) % searchResults.length;
+      searchCount.textContent = `${searchIndex + 1}/${searchResults.length}`;
+      searchResults[searchIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // ===== 禁言功能 =====
+    document.querySelectorAll('.mute-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const duration = parseInt(btn.dataset.duration);
+        if (muteTarget) {
+          socket.emit('mute-user', { targetNickname: muteTarget, duration });
+          muteModal.classList.add('hidden');
+          muteTarget = null;
+        }
+      });
+    });
+
+    muteCancel.addEventListener('click', () => {
+      muteModal.classList.add('hidden');
+      muteTarget = null;
+    });
+
+    // ===== 请求通知权限 =====
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // ===== 工具函数 =====
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ===== 自动调整输入框高度 =====
+    messageInput.addEventListener('input', () => {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+    });
   </script>
-  <script src="/chatroom.js"></script>
 </body>
 </html>
