@@ -1,7 +1,7 @@
 {
   "name": "nodechatroom",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.0.1",
+  "description": "A multi-rooms online chat application built with Node.js, Express, and Socket.IO",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
