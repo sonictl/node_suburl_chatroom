@@ -780,6 +780,14 @@
     // 页面获得焦点时停止闪烁
     window.addEventListener('focus', stopTitleBlink);
 
+    // 页面可见性变化时停止闪烁（移动端切换回页面时）
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) stopTitleBlink();
+    });
+
+    // 用户点击页面时停止闪烁
+    document.addEventListener('click', stopTitleBlink);
+
     socket.on('message', (msg) => {
       addMessage(msg);
 
