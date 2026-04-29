@@ -21,11 +21,18 @@ app.use(express.static(path.join(__dirname, 'public')));
 // In-memory storage
 const rooms = new Map();
 
+
+// Route - notification test page
+app.get('/testnote', (req, res) => {
+  res.render('test');
+});
+
 // Route - match /:roomId
 app.get('/:roomId', (req, res) => {
   const { roomId } = req.params;
   res.render('index', { roomId });
 });
+
 
 // Root route redirects to random room
 app.get('/', (req, res) => {

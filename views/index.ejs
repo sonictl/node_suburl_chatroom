@@ -691,9 +691,9 @@
       }
     });
 
-    // 发送通知（仅当页面在后台）
+    // 发送通知
     function sendNotification(title, body) {
-      if (notificationEnabled && Notification.permission === 'granted' && !isPageVisible) {
+      if (notificationEnabled && Notification.permission === 'granted') {
         try {
           const notif = new Notification(title, { body });
           notif.onclick = () => {
@@ -891,12 +891,15 @@
         startTitleBlink();
       }
 
-      // 桌面通知（受开关控制）
-      if (msg.type === 'private' && msg.to === currentNickname) {
-        sendNotification('来自 ' + msg.from + ' 的私聊', msg.content);
-      }
-      if (msg.content && msg.content.includes('@' + currentNickname)) {
-        sendNotification(msg.from + ' 提到了你', msg.content);
+      // 桌面通知（受开关控制，仅非系统消息触发）
+      if (msg.type !== 'system' && msg.from !== currentNickname) {
+        if (msg.type === 'private' && msg.to === currentNickname) {
+          sendNotification('💬 来自 ' + msg.from + ' 的私聊', msg.content);
+        } else if (msg.content && msg.content.includes('@' + currentNickname)) {
+          sendNotification('📢 ' + msg.from + ' 提到了你', msg.content);
+        } else {
+          sendNotification('💬 新消息 from ' + msg.from, msg.content);
+        }
       }
     });
 
