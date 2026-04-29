@@ -1,200 +1,118 @@
-# 轻量级聊天室 - 使用说明
+# Node SubUrl ChatRoom
 
-## 一、快速开始
+A lightweight, real-time chat room application built with Node.js, Express, Socket.io, and EJS. Supports multiple isolated rooms via URL sub-paths.
 
-### 1.1 启动服务器
+## Features
+
+- **Multi-room**: Create/join rooms via URL path (e.g., `/gaming`, `/friends`)
+- **Private messages**: `@username` or `/w username` syntax
+- **Admin controls**: First user in a room becomes admin with mute/unmute powers
+- **Mute system**: IP-based mute with configurable duration
+- **Message search**: Search through chat history
+- **Emoji picker**: Built-in emoji selector
+- **Dark/Light theme**: Toggle between themes
+- **Mobile responsive**: Drawer-style user list on mobile devices
+- **Auto-reconnect**: Socket.io handles reconnection seamlessly
+
+## Quick Start
 
 ```bash
-cd nodeChatRoom
+npm install
 npm start
 ```
 
-服务器默认运行在 `http://localhost:3000`
+Server runs at `http://localhost:3000` by default. Configure port via `.env` file:
 
-> 端口号可通过 `.env` 文件中的 `PORT` 变量配置，例如 `PORT=8080`
+```
+PORT=8080
+```
 
-### 1.2 访问聊天室
+### Access Rooms
 
-| 访问地址 | 说明 |
-|----------|------|
-| `http://localhost:3000` | 自动重定向到默认房间 `default` |
-| `http://localhost:3000/gaming` | 进入 gaming 房间 |
-| `http://localhost:3000/朋友聚会` | 进入中文房间名（支持中文 URL） |
+| URL | Description |
+|-----|-------------|
+| `http://localhost:3000` | Auto-redirects to `default` room |
+| `http://localhost:3000/gaming` | Join `gaming` room |
+| `http://localhost:3000/friends` | Join `friends` room |
 
-> 不同房间完全隔离，用户、消息互不干扰。
+## Usage
 
----
+- **Nickname**: Saved in `localStorage` per room. Use the "Change Nickname" button to switch.
+- **Private chat**: Click a user in the online list to `@mention`, or use `/w username message`.
+- **Admin**: The first user in a room becomes admin. Hover over a user to see the mute button.
 
-## 二、普通用户使用指南
+## Deployment
 
-### 2.1 首次进入房间
+### Deploy to a VPS (Linux)
 
-1. 在浏览器中打开聊天室地址
-2. 弹出 **昵称输入框**，输入 1-16 个字符的昵称
-3. 点击「进入聊天室」或按 Enter 键
-4. 如果昵称已被同房间其他用户占用，会提示"昵称已被占用"，需更换昵称
+```bash
+# Install Node.js (v18+)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
 
-### 2.2 再次进入同一房间
+# Clone and setup
+git clone https://github.com/sonictl/node_suburl_chatroom.git
+cd node_suburl_chatroom
+npm install --production
 
-- 昵称会自动保存在浏览器中（`localStorage`），下次进入同一房间自动登录
-- 不同房间的昵称分别存储，互不影响
+# Create .env file
+echo "PORT=3000" > .env
 
-### 2.3 更换昵称
+# Run with process manager (recommended)
+npm install -g pm2
+pm2 start server.js --name chatroom
+pm2 save
+pm2 startup
+```
 
-- 点击顶部栏右侧的 **「更换昵称」** 按钮
-- 重新弹出昵称输入框，输入新昵称即可
-- 更换昵称后，旧昵称会从房间中移除
+### Deploy with Docker
 
-### 2.4 发送消息
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production
+COPY . .
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
 
-#### 普通聊天
-- 在底部输入框输入文字，点击 **「发送」** 按钮或按 **Enter** 键
-- 按 **Shift + Enter** 可换行（消息气泡中会保留换行格式）
+```bash
+docker build -t chatroom .
+docker run -d -p 3000:3000 --name chatroom chatroom
+```
 
-#### 私聊消息（两种方式）
+### Deploy to Railway / Render / Fly.io
 
-**方式一：@用户名**
-1. 点击右侧 **在线用户列表** 中的某个用户
-2. 输入框自动填入 `@用户名 `
-3. 在后面输入消息内容后发送
+1. Connect your GitHub repository
+2. Set build command: `npm install`
+3. Set start command: `node server.js`
+4. Set environment variable `PORT` if needed
 
-**方式二：/w 命令**
-- 在输入框输入：`/w 用户名 消息内容`
-- 示例：`/w 张三 你好吗？`
+### Reverse Proxy (Nginx)
 
-> 私聊消息只有发送方和接收方能看到，房间其他用户不可见。
-> 私聊消息有 **橙色边框** 标记，并显示「私聊给 xxx」或「私聊 from xxx」前缀。
+```nginx
+server {
+    listen 80;
+    server_name chat.example.com;
 
-### 2.5 消息气泡样式
-
-| 消息类型 | 样式 |
-|----------|------|
-| 自己的消息 | 浅绿色气泡（`#c8e6c9`），靠右对齐，不显示发送者名称 |
-| 他人的消息 | 更浅绿色气泡（`#e8f5e9`），靠左对齐，显示发送者名称 |
-| 系统通知 | 居中、斜体、浅灰色文字 |
-| 私聊消息 | 橙色边框标记 |
-
-### 2.6 使用 Emoji
-
-1. 点击输入框左侧的 **😊** 按钮
-2. 弹出 Emoji 选择面板，点击任意 Emoji 即可插入到输入框
-3. 点击面板外区域可关闭
-
-### 2.7 搜索消息
-
-1. 点击顶部栏的 **「🔍 搜索」** 按钮
-2. 在搜索框中输入关键词
-3. 匹配的消息会高亮显示（黄色背景）
-4. 使用 **▲ / ▼** 按钮在搜索结果间导航
-5. 点击 **✕** 关闭搜索
-
-### 2.8 连接状态指示
-
-顶部栏显示当前连接状态：
-
-| 状态 | 指示器 | 说明 |
-|------|--------|------|
-| 已连接 | 🟢 已连接 | 正常连接 |
-| 重连中 | 🟡 重连中... | 网络断开，正在尝试重连 |
-| 断开 | 🔴 断开连接 | 无法连接到服务器 |
-
-### 2.9 打字指示器
-
-- 当你在输入框打字时，其他用户会看到 `你的昵称 正在输入...`
-- 停止输入 1 秒后提示自动消失
-
-### 2.10 @消息通知
-
-- 当有人私聊你或消息中包含 `@你的昵称` 时
-- 如果已授权浏览器通知权限，会弹出系统通知
-
-### 2.11 新消息标题闪烁
-
-- 当收到他人发送的新消息且页面不在焦点时，浏览器标签页标题会在 `聊天室 - xxx` 和 `📩 New message` 之间闪烁
-- 点击页面任意位置即可停止闪烁
-
----
-
-## 三、管理员使用指南
-
-### 3.1 成为管理员
-
-- **第一个进入房间的用户自动成为管理员**
-- 管理员离开房间后，下一个进入的用户自动成为管理员
-- 所有人都离开后，房间自动清理释放
-
-### 3.2 禁言用户
-
-1. 在右侧 **在线用户列表** 中，将鼠标悬停在要禁言的用户上
-2. 点击出现的 **🔇** 按钮
-3. 弹出禁言弹窗，选择禁言时长：
-   - **1分钟** - 短时警告
-   - **5分钟** - 中等时长
-   - **10分钟** - 长时间禁言
-4. 被禁言用户会收到系统通知，告知禁言时长
-5. 禁言期间，被禁言用户发送的任何消息都会被拒绝，并提示剩余时间
-6. 禁言到期后自动解除
-
-> 禁言基于 IP 地址，即使用户更换昵称重新进入，禁言仍然有效。
-
-### 3.3 管理员标识
-
-- 管理员在在线用户列表中排在第一位
-- 只有管理员能看到其他用户悬停时的 🔇 禁言按钮
-
----
-
-## 四、技术说明
-
-### 4.1 数据存储
-
-- **所有数据存储在内存中**，不依赖数据库
-- 服务器重启后所有聊天记录和用户数据会清空
-- 昵称保存在浏览器 `localStorage` 中，按房间分别存储（键名：`nickname_{{roomId}}`）
-
-### 4.2 断线重连
-
-- Socket.io 自动处理断线重连
-- 重连后自动恢复房间和昵称状态
-- 重连期间显示 🟡 状态指示
-
-### 4.3 消息格式
-
-```javascript
-{
-  id: "uuid",           // 唯一标识
-  type: "chat" | "private" | "system",  // 消息类型
-  from: "昵称",         // 发送者
-  to: "昵称" | null,    // 接收者（私聊时有值）
-  content: "消息内容",   // 消息正文
-  timestamp: Date.now(), // 时间戳
-  roomId: "房间名"       // 所属房间
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
 }
 ```
 
-### 4.4 环境配置
+## Tech Stack
 
-项目使用 `.env` 文件配置环境变量：
+- **Backend**: Node.js, Express, Socket.io
+- **Frontend**: EJS, Tailwind CSS, DaisyUI
+- **Storage**: In-memory (no database required)
 
-```env
-PORT=3000    # 服务器端口号
-```
+## License
 
----
-
-## 五、常见问题
-
-**Q: 为什么我看不到其他用户的消息？**
-A: 检查连接状态是否为 🟢 已连接。如果是 🔴 断开，请刷新页面重试。
-
-**Q: 为什么我无法发送消息？**
-A: 可能被管理员禁言，系统会提示剩余禁言时间。等待禁言结束后即可恢复。
-
-**Q: 更换房间后昵称会变吗？**
-A: 每个房间的昵称独立存储，进入不同房间可以使用不同昵称。
-
-**Q: 消息会保存多久？**
-A: 消息仅保存在内存中，服务器重启后所有消息丢失。这是轻量级设计，不依赖数据库。
-
-**Q: 如何换行输入？**
-A: 按 **Shift + Enter** 即可在输入框中换行，消息发送后会保留换行格式。
+ISC
