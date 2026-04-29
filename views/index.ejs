@@ -859,14 +859,6 @@
       renderUserList(users, drawerUsersList);
     });
 
-    socket.on('user-join', (data) => {
-      addSystemMessage(data.nickname + ' 加入了房间');
-    });
-
-    socket.on('user-leave', (data) => {
-      addSystemMessage(data.nickname + ' 离开了房间');
-    });
-
     // ===== 发送消息 =====
     function sendMessage() {
       const content = messageInput.value.trim();

@@ -87,7 +87,6 @@ io.on('connection', (socket) => {
     room.nicknamesSet.add(nickname);
 
     // Notify other users in the room
-    socket.to(roomId).emit('user-join', { nickname });
     socket.to(roomId).emit('message', {
       id: uuidv4(),
       type: 'system',
@@ -326,7 +325,6 @@ function leaveCurrentRoom(socket, roomId, nickname) {
   room.nicknamesSet.delete(nickname);
 
   // Notify other users
-  socket.to(roomId).emit('user-leave', { nickname });
   socket.to(roomId).emit('message', {
     id: uuidv4(),
     type: 'system',
