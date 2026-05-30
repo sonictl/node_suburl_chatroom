@@ -780,6 +780,21 @@
       addSystemMessage('你已加入房间 ' + roomId);
     });
 
+    // ===== 接收历史消息（重连后补发断连期间的消息） =====
+    socket.on('history-messages', (messages) => {
+      if (messages && messages.length > 0) {
+        // 添加分隔提示
+        addSystemMessage(`📋 以下为最近 ${messages.length} 条历史消息（15分钟内）`);
+        
+        // 按时间顺序渲染历史消息
+        messages.forEach(msg => {
+          addMessage(msg);
+        });
+        
+        addSystemMessage(`📋 历史消息加载完毕`);
+      }
+    });
+
     // ===== 更换昵称 =====
     changeNicknameBtn.addEventListener('click', () => {
       // 先离开当前房间

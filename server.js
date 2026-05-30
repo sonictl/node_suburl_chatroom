@@ -21,6 +21,26 @@ app.use(express.static(path.join(__dirname, 'public')));
 // In-memory storage
 const rooms = new Map();
 
+// Message history retention: 15 minutes (900,000 ms)
+// Messages older than this will be removed during cleanup
+const MESSAGE_RETENTION_MS = 15 * 60 * 1000;
+
+// Periodically clean up expired messages every 5 minutes
+// Note: cleanup only removes messages OLDER than MESSAGE_RETENTION_MS (15 min)
+// Messages within the 15-minute window are preserved
+setInterval(() => {
+  const now = Date.now();
+  for (const [roomId, room] of rooms) {
+    if (room.messages && room.messages.length > 0) {
+      const before = room.messages.length;
+      room.messages = room.messages.filter(msg => (now - msg.timestamp) < MESSAGE_RETENTION_MS);
+      if (room.messages.length !== before) {
+        console.log(`[Cleanup] Room ${roomId}: removed ${before - room.messages.length} expired messages (older than 15 min)`);
+      }
+    }
+  }
+}, 5 * 60 * 1000);
+
 
 // // Route - notification test page
 // app.get('/testnote', (req, res) => {
@@ -56,7 +76,8 @@ io.on('connection', (socket) => {
       rooms.set(roomId, {
         users: new Map(),
         nicknamesSet: new Set(),
-        mutedIPs: new Map() // IP -> { until: timestamp }
+        mutedIPs: new Map(), // IP -> { until: timestamp }
+        messages: [] // Message history cache
       });
     }
 
@@ -110,6 +131,13 @@ io.on('connection', (socket) => {
     // Also notify other users to update list
     socket.to(roomId).emit('online-users', onlineUsers);
 
+    // Send message history (within 15-minute retention window)
+    const now = Date.now();
+    const recentMessages = room.messages.filter(msg => (now - msg.timestamp) < MESSAGE_RETENTION_MS);
+    if (recentMessages.length > 0) {
+      socket.emit('history-messages', recentMessages);
+    }
+
     // Confirm join success
     socket.emit('join-success', { nickname, roomId });
   });
@@ -150,6 +178,9 @@ io.on('connection', (socket) => {
       timestamp: Date.now(),
       roomId: currentRoom
     };
+
+    // Save to message history (with 15-minute retention)
+    room.messages.push(message);
 
     io.to(currentRoom).emit('message', message);
   });
