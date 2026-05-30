@@ -184,9 +184,10 @@
     
     /* 消息发送者名 */
     .msg-sender {
-      font-size: 0.7rem;
-      opacity: 0.6;
+      font-size: 0.84rem;
+      opacity: 0.85;
       line-height: 1.2;
+      font-weight: 500;
     }
 
     /* 主题切换开关 */
@@ -810,6 +811,24 @@
       showNicknameModal();
     });
 
+    // ===== 昵称颜色映射 =====
+    const nicknameColors = {};
+    const colorPalette = [
+      '#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#1abc9c',
+      '#3498db', '#9b59b6', '#e91e63', '#00bcd4', '#ff5722',
+      '#795548', '#607d8b', '#8bc34a', '#ff9800', '#673ab7',
+      '#009688', '#ffc107', '#03a9f4', '#cddc39', '#f44336'
+    ];
+    let colorIndex = 0;
+
+    function getNicknameColor(nickname) {
+      if (!nicknameColors[nickname]) {
+        nicknameColors[nickname] = colorPalette[colorIndex % colorPalette.length];
+        colorIndex++;
+      }
+      return nicknameColors[nickname];
+    }
+
     // ===== 消息渲染 =====
     function addMessage(msg) {
       const wrapper = document.createElement('div');
@@ -840,8 +859,9 @@
             <div class="msg-time text-right">${time}</div>
           `;
         } else {
+          const senderColor = getNicknameColor(msg.from);
           wrapper.innerHTML = `
-            <div class="msg-sender">${msg.from}</div>
+            <div class="msg-sender" style="color: ${senderColor}">${msg.from}</div>
             <div class="message-bubble px-3 py-1">${escapeHtml(msg.content)}</div>
             <div class="msg-time">${time}</div>
           `;
