@@ -54,7 +54,7 @@ curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Clone and setup
-git clone https://github.com/sonictl/node_suburl_chatroom.git
+git clone https://github.com/your-username/node_suburl_chatroom.git
 cd node_suburl_chatroom
 npm install --production
 
@@ -110,11 +110,13 @@ server {
 }
 ```
 
+
 ## Tech Stack
 
-- **Backend**: Node.js, Express, Socket.io
-- **Frontend**: EJS, Tailwind CSS, DaisyUI
-- **Storage**: In-memory (no database required)
+- **Backend (Node.js)**: Node.js, Express, Socket.io
+- **Backend (Worker)**: Cloudflare Workers, Durable Objects
+- **Frontend**: EJS (Node.js) / Vanilla HTML (Worker), Tailwind CSS, DaisyUI
+- **Storage**: In-memory (Node.js) / Durable Objects SQLite (Worker)
 
 ## License
 
