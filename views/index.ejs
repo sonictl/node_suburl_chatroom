@@ -1007,6 +1007,7 @@
       if (wMatch) {
         socket.emit('private-message', { to: wMatch[1], content: wMatch[2] });
         messageInput.value = '';
+        resetInputHeight();
         return;
       }
 
@@ -1015,12 +1016,19 @@
       if (atMatch) {
         socket.emit('private-message', { to: atMatch[1], content: atMatch[2] });
         messageInput.value = '';
+        resetInputHeight();
         return;
       }
 
       // 普通消息
       socket.emit('chat-message', { content });
       messageInput.value = '';
+      resetInputHeight();
+    }
+
+    function resetInputHeight() {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = messageInput.rows ? '' : '42px';
     }
 
     sendBtn.addEventListener('click', sendMessage);
