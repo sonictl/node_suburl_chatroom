@@ -279,7 +279,7 @@
       
       /* 为聊天区域添加底部内边距，避免被固定输入框遮挡 */
       .flex-1.flex.flex-col.bg-base-200 {
-        padding-bottom: 70px !important;
+        padding-bottom: 100px !important;
       }
       
       /* 调整顶部栏 */
@@ -1038,7 +1038,8 @@
 
     function scrollToBottom() {
       if (autoScroll) {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // 多滚动一些距离，避免最后一条消息被底部固定输入区域遮挡
+        chatMessages.scrollTop = chatMessages.scrollHeight + 120;
       }
     }
 
