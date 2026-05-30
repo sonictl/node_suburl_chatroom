@@ -1025,9 +1025,21 @@
 
     sendBtn.addEventListener('click', sendMessage);
     messageInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
+      // 桌面端：Enter 发送，Shift+Enter 换行
+      // 移动端：Enter 换行（通过虚拟键盘的"换行"键），点击"发送"按钮发送
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        // 移动端：Enter 只换行，不发送
+        if (e.key === 'Enter') {
+          // 不做 preventDefault，让 textarea 正常换行
+          return;
+        }
+      } else {
+        // 桌面端：Enter 发送，Shift+Enter 换行
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
       }
     });
 
