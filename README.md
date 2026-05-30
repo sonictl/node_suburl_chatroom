@@ -13,6 +13,9 @@ A lightweight, real-time chat room application built with Node.js, Express, Sock
 - **Dark/Light theme**: Toggle between themes
 - **Mobile responsive**: Drawer-style user list on mobile devices
 - **Auto-reconnect**: Socket.io handles reconnection seamlessly
+- **Message history cache**: 15-minute message retention for mobile reconnection — when mobile browser switches away and back, missed messages are automatically restored
+- **Desktop notifications**: Browser push notifications for new messages, private chats, and @mentions (user-toggleable)
+- **Title blink**: Page title flashes on new messages when the tab is in the background
 
 ## Quick Start
 
