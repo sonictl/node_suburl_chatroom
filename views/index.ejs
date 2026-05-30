@@ -825,7 +825,7 @@
         const prefix = isSelf ? `私聊给 ${msg.to}` : `私聊 from ${msg.from}`;
         wrapper.innerHTML = `
           <div class="msg-sender ${isSelf ? 'text-right' : ''}">${prefix}</div>
-          <div class="message-bubble px-3 py-2 message-private">
+          <div class="message-bubble px-3 py-1 message-private">
             <div class="msg-time mb-1">${msg.from} ${time}</div>
             <div>${escapeHtml(msg.content)}</div>
           </div>
@@ -835,13 +835,13 @@
         wrapper.className += isSelf ? ' message-self' : ' message-other';
         if (isSelf) {
           wrapper.innerHTML = `
-            <div class="message-bubble px-3 py-2">${escapeHtml(msg.content)}</div>
+            <div class="message-bubble px-3 py-1">${escapeHtml(msg.content)}</div>
             <div class="msg-time text-right">${time}</div>
           `;
         } else {
           wrapper.innerHTML = `
             <div class="msg-sender">${msg.from}</div>
-            <div class="message-bubble px-3 py-2">${escapeHtml(msg.content)}</div>
+            <div class="message-bubble px-3 py-1">${escapeHtml(msg.content)}</div>
             <div class="msg-time">${time}</div>
           `;
         }
